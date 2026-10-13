@@ -1,0 +1,5 @@
+**Install:** download `fazon_track.lua` into the `scripts` folder of your mpv config folder and
+`fazon_track.conf` into its `script-opts` folder, put your fazon.nexus API key in the `.conf`, and
+restart mpv. Then press **Ctrl+a** (active immersion) or **Ctrl+p** (passive immersion) while
+something plays. The [README](https://github.com/SomeRandomGuy64/Fazon-Nexus-MPV-Tracker#readme)
+has the details.

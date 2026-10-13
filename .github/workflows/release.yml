@@ -1,0 +1,54 @@
+# Publish a release with the script and the example settings attached.
+#
+# Trigger: push a tag vX.Y.Z whose X.Y.Z equals VERSION in fazon_track.lua, or run it by hand
+# (Actions → Release → Run workflow) with an existing tag. Re-running replaces the assets.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release (e.g. v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write   # create releases and upload assets
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+      - name: Check the tag matches VERSION in fazon_track.lua
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::'$TAG' isn't a vX.Y.Z tag"; exit 1; }
+          version="$(sed -n 's/^local VERSION = "\(.*\)"$/\1/p' fazon_track.lua)"
+          [[ "v$version" == "$TAG" ]] || { echo "::error::tag $TAG but fazon_track.lua says $version"; exit 1; }
+
+      - name: Check the Lua compiles
+        run: |
+          sudo apt-get install -y -qq lua5.2 >/dev/null
+          luac5.2 -p fazon_track.lua
+
+      - name: Create or update the release
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --title "$TAG" \
+              --notes-file .github/release-notes.md --generate-notes
+          fi
+          gh release upload "$TAG" --clobber fazon_track.lua fazon_track.conf
